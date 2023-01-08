@@ -29,7 +29,7 @@ class Model_Q:
 
         # Model Q position variables   
         self.dy_0_pos = 0
-        self.dy_0_limits = [2000, 5900]
+        self.dy_0_limits = [2300, 4100]
         self.dy_1_pos = 0
         self.dy_1_limits = [1000, 0]     
         self.dy_2_pos = 0 #rotation motor
@@ -73,6 +73,8 @@ class Model_Q:
         self.dxl2_goal_position = self.dy_2_limits[0]   #rotate limits
         self.dxl3_goal_position = self.dy_3_limits[0]  #550 released, 1500 closed
         self.dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
+        self.control_val_l = 63
+        self.control_val_r = 63
 
         # Initialize PortHandler instance
         # Set the port path
@@ -322,13 +324,16 @@ class Model_Q:
                                 self.just_switched = not self.just_switched
                                 if (not self.just_switched):
                                     self.mode = not self.mode
-                            elif (control_id==0):
-                                self.map_val(control_val,0)
-                                self.map_val(control_val,1)
+                            elif (control_id==4):
+                                self.linear_map_val(control_val,0)
+                                self.control_val_l = control_val
+                                #self.map_val(control_val,0)
+                                #self.map_val(control_val,1)
                                 #self.map_val(control_val,2)
-                                self.map_val(control_val,3)
-                            elif (control_id==1):
-                                self.map_val(control_val,2)
+                                #self.map_val(control_val,3)
+                            elif (control_id==5):
+                                self.linear_map_val(control_val,3)
+                                self.control_val_r = control_val
         
                         else:
                             # if in individual control mode
@@ -345,6 +350,9 @@ class Model_Q:
                             #   self.map_val(control_val,3)
                             #elif (control_id==7):
                             #   self.map_val(control_val,2)
+        if (self.mode):
+            self.linear_map_val(self.control_val_l,0)
+            self.linear_map_val(self.control_val_r,3)
 
 
 
@@ -387,6 +395,7 @@ class Model_Q:
         #self.portHandler.closePort()   
 
     def map_val(self, input_val, motor_id):
+        
         self.move_to = True
         if (motor_id==0):
             # scale to match 0 motor
@@ -401,6 +410,31 @@ class Model_Q:
         else:
             #scale to 3
             self.dxl3_goal_position = int(self.dy_3_limits[0]+(input_val/127.0)*(self.dy_3_limits[1]-self.dy_3_limits[0]))
+    
+    def linear_map_val(self, input_val, motor_id):
+        self.move_to = True
+        if (input_val < 50):
+            if (motor_id==0):
+                self.dxl0_goal_position = self.dxl0_goal_position - (50-input_val)/3
+                if (self.dxl0_goal_position<self.dy_0_limits[0]):
+                    self.dxl0_goal_position = self.dy_0_limits[0]
+            elif (motor_id==3):
+                self.dxl3_goal_position = self.dxl3_goal_position - (50-input_val)/3
+                if (self.dxl3_goal_position<self.dy_3_limits[0]):
+                    self.dxl3_goal_position = self.dy_3_limits[0]
+        elif (input_val > 77):
+            if (motor_id==0):
+                self.dxl0_goal_position = self.dxl0_goal_position + (input_val-77)/3
+                if (self.dxl0_goal_position>self.dy_0_limits[1]):
+                    self.dxl0_goal_position = self.dy_0_limits[1]
+            elif (motor_id==3):
+                self.dxl3_goal_position = self.dxl3_goal_position + (input_val-77)/3
+                if (self.dxl3_goal_position>self.dy_3_limits[1]):
+                    self.dxl3_goal_position = self.dy_3_limits[1]
+            # do not
+        #if (motor_id==0):
+        #print('input: ', self.dxl0_goal_position)
+            
 
 if __name__== "__main__":
     obj_model_q = Model_Q()
